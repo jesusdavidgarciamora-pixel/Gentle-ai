@@ -49,7 +49,9 @@ Parse what the user wants to explore:
 
 ### Step 3: Investigate the Codebase
 
-Read relevant code to understand:
+Read `search_strategy` from project context (per Section E's "Reading the config" procedure) to determine whether to use grep-only or hybrid (RAG+grep) mode. Then follow **Section E** from `skills/_shared/sdd-phase-common.md` for all code search operations.
+
+Understand:
 - Current architecture and patterns
 - Files and modules that would be affected
 - Existing behavior that relates to the request
@@ -57,8 +59,8 @@ Read relevant code to understand:
 
 ```
 INVESTIGATE:
-├── Read entry points and key files
-├── Search for related functionality
+├── Search for related functionality (via Section E cascade)
+├── Read entry points and key files (targeted line ranges, not full files)
 ├── Check existing tests (if any)
 ├── Look for patterns already in use
 └── Identify dependencies and coupling

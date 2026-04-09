@@ -76,11 +76,13 @@ Read tasks.md
 
 ### Step 4: Check Correctness (Static Specs Match)
 
+Read `search_strategy` from project context (per Section E's "Reading the config" procedure). Then follow **Section E** from `skills/_shared/sdd-phase-common.md` for all code search operations. Use the hybrid cascade (RAG+grep) if configured, or grep-only otherwise.
+
 For EACH spec requirement and scenario, search the codebase for structural evidence:
 
 ```
 FOR EACH REQUIREMENT in specs/:
-├── Search codebase for implementation evidence
+├── Search codebase for implementation evidence (via Section E cascade)
 ├── For each SCENARIO:
 │   ├── Is the GIVEN precondition handled in code?
 │   ├── Is the WHEN action implemented?

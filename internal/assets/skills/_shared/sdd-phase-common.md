@@ -87,3 +87,62 @@ Example:
 **Skill Resolution**: injected — 3 skills (react-19, typescript, tailwind-4)
 (other values: `fallback-registry`, `fallback-path`, or `none — no registry found`)
 ```
+
+## E. Code Search Protocol
+
+Phases that investigate or read existing code (`sdd-explore`, `sdd-apply`, `sdd-verify`) MUST follow this protocol instead of ad-hoc Grep+Read.
+
+### Reading the config
+
+```
+Read search_strategy from project context:
+├── engram: included in sdd-init/{project} observation → search_strategy block
+├── openspec: openspec/config.yaml → search_strategy key
+└── Not found → default to mode=grep (current behavior, zero change)
+```
+
+### Mode behavior
+
+| Mode | Behavior |
+|------|----------|
+| `grep` | Current behavior — Grep + Read. No RAG tool calls. Default when config is absent. |
+| `hybrid` | RAG-first cascade with grep fallback. Requires `search_strategy.rag.mcp_tool`. |
+
+If `mode` is `hybrid` but `rag.mcp_tool` is missing or empty, fall back to `grep` and include a warning in the return envelope's `risks` field.
+
+### Hybrid cascade
+
+```
+1. Semantic query → call configured mcp_tool with a natural-language description
+   of what you're looking for
+   ├── Results sufficient (≥2 relevant snippets)? → use them, done
+   └── Results insufficient or empty?
+       ↓
+2. Exact search → Grep for symbols, patterns, or file paths
+   ├── Context clear from matches? → done
+   └── Need surrounding context?
+       ↓
+3. Targeted read → Read with specific line range (NOT full files)
+```
+
+Each step is strictly additive — the cascade never produces worse results than grep-only.
+
+### Grep-only path (mode=grep or missing)
+
+Use Grep to find relevant code, then Read with targeted line ranges. This is identical to current behavior. No RAG tool is called.
+
+### When RAG tool is unavailable at runtime
+
+If `mode` is `hybrid` but the MCP tool call fails (tool not found, server down, timeout):
+1. Log the failure
+2. Fall back to grep behavior for the remainder of this phase
+3. Include in return envelope `risks`: "RAG search unavailable, fell back to grep — consider checking MCP server status"
+
+### Reindex hook (sdd-apply only)
+
+After completing artifact persistence in sdd-apply, IF `search_strategy.rag.reindex_tool` is configured:
+1. Call `reindex_tool` once with the list of files modified in this batch
+2. Fire-and-forget — do NOT wait for completion, do NOT block on the result
+3. If the call fails, log it and continue — grep fallback guarantees correctness
+
+Do NOT call reindex per individual file write. One call per batch only.

@@ -238,3 +238,69 @@ Convention files under the agent's global skills directory (global) or `.agent/s
 - `engram` → `mem_search(...)` → `mem_get_observation(...)`
 - `openspec` → read `openspec/changes/*/state.yaml`
 - `none` → state not persisted — explain to user
+
+## Taskrunner Integration (Autonomous Execution)
+
+The orchestrator MUST detect task complexity and choose the appropriate execution mode automatically.
+
+### Complexity Detection
+
+Before starting any SDD workflow, analyze the user's request:
+
+```
+IF task contains simple keywords:
+  - "fix typo", "add test", "update doc"
+  - "rename", "delete file", "create script"
+  - "simple", "quick", "minor"
+THEN → Use taskrunner (one-shot execution)
+
+IF task contains complex keywords:
+  - "redesign", "refactor architecture"
+  - "new feature", "implement system"
+  - "breaking change", "migration"
+THEN → Use SDD with mini-loops (sdd-autonomous)
+```
+
+### Automatic Mode Selection
+
+When the user invokes `/sdd-new <change>`:
+
+1. **Analyze the change description**
+   - Use `autonomous.DetectComplexity(change)` if available
+   - Or apply keyword heuristics
+
+2. **Route accordingly:**
+   - **Simple** → Execute with `gentle-ai task "change"`
+   - **Complex** → Run `gentle-ai sdd-autonomous "change"`
+
+3. **Explain the choice to the user**
+
+### Execution Commands
+
+| Mode | Command | Use When |
+|------|---------|----------|
+| Simple task | `!gentle-ai task "description"` | Single action, no planning needed |
+| Complex SDD | `!gentle-ai sdd-autonomous "description"` | Multi-phase, needs structure |
+| Manual SDD | `/sdd-new` (traditional) | User wants full control |
+
+### Integration Points
+
+The taskrunner integrates with SDD phases:
+
+- **Explore phase**: Can use taskrunner for quick codebase scanning
+- **Apply phase**: Uses taskrunner for implementation
+- **Any phase**: Falls back to taskrunner if the phase task is straightforward
+
+### Example Flow
+
+```
+User: /sdd-new fix typo in readme
+→ Detect: simple task
+→ Route: !gentle-ai task "fix typo in readme"
+→ Result: Direct execution, no SDD phases
+
+User: /sdd-new redesign authentication system
+→ Detect: complex task
+→ Route: !gentle-ai sdd-autonomous "redesign auth"
+→ Result: Full SDD with mini-loops per phase
+```

@@ -10,13 +10,16 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/gentleman-programming/gentle-ai/internal/agentbuilder"
 	"github.com/gentleman-programming/gentle-ai/internal/backup"
 	"github.com/gentleman-programming/gentle-ai/internal/cli"
 	"github.com/gentleman-programming/gentle-ai/internal/model"
 	"github.com/gentleman-programming/gentle-ai/internal/pipeline"
 	"github.com/gentleman-programming/gentle-ai/internal/planner"
+	"github.com/gentleman-programming/gentle-ai/internal/sdd/autonomous"
 	"github.com/gentleman-programming/gentle-ai/internal/state"
 	"github.com/gentleman-programming/gentle-ai/internal/system"
+	"github.com/gentleman-programming/gentle-ai/internal/taskrunner"
 	"github.com/gentleman-programming/gentle-ai/internal/tui"
 	"github.com/gentleman-programming/gentle-ai/internal/update"
 	"github.com/gentleman-programming/gentle-ai/internal/update/upgrade"
@@ -130,6 +133,10 @@ func RunArgs(args []string, stdout io.Writer) error {
 		return nil
 	case "restore":
 		return cli.RunRestore(args[1:], stdout)
+	case "task":
+		return runTask(context.Background(), args[1:], stdout)
+	case "sdd-autonomous":
+		return autonomous.RunFromArgs(args[1:], stdout)
 	default:
 		return fmt.Errorf("unknown command %q — run 'gentle-ai help' for available commands", args[0])
 	}
@@ -436,4 +443,147 @@ func ListBackups() []backup.Manifest {
 	}
 
 	return manifests
+}
+
+// runTask handles the `gentle-ai task [flags] "description"` command.
+//
+// This command runs an autonomous agentic loop that:
+//   - Plans steps to complete the task
+//   - Executes shell commands, reads/writes files
+//   - Observes results and decides next actions
+//   - Reports only the final result (one-shot, no friction)
+//
+// Flags:
+//   --verbose          Show each step as it executes
+//   --workdir DIR      Set working directory (default: current)
+//   --engine ENGINE    Force specific engine (claude-code, opencode, gemini, codex)
+//   --max-iter N       Maximum iterations (default: 30)
+//   --save-to-engram   Persist report to Engram memory
+func runTask(ctx context.Context, args []string, stdout io.Writer) error {
+	config := taskrunner.DefaultRunConfig("")
+
+	// Parse flags
+	var taskDescription string
+	i := 0
+	for i < len(args) {
+		arg := args[i]
+
+		switch {
+		case arg == "--verbose":
+			config.Verbose = true
+			i++
+		case arg == "--save-to-engram":
+			config.SaveToEngram = true
+			i++
+		case strings.HasPrefix(arg, "--workdir="):
+			config.WorkDir = strings.TrimPrefix(arg, "--workdir=")
+			i++
+		case arg == "--workdir" && i+1 < len(args):
+			config.WorkDir = args[i+1]
+			i += 2
+		case strings.HasPrefix(arg, "--engine="):
+			config.Engine = model.AgentID(strings.TrimPrefix(arg, "--engine="))
+			i++
+		case arg == "--engine" && i+1 < len(args):
+			config.Engine = model.AgentID(args[i+1])
+			i += 2
+		case strings.HasPrefix(arg, "--max-iter="):
+			fmt.Sscanf(strings.TrimPrefix(arg, "--max-iter="), "%d", &config.MaxIter)
+			i++
+		case arg == "--max-iter" && i+1 < len(args):
+			fmt.Sscanf(args[i+1], "%d", &config.MaxIter)
+			i += 2
+		case strings.HasPrefix(arg, "-"):
+			return fmt.Errorf("unknown flag: %s", arg)
+		default:
+			// First non-flag is the task description
+			if taskDescription == "" {
+				taskDescription = arg
+			} else {
+				taskDescription += " " + arg
+			}
+			i++
+		}
+	}
+
+	if strings.TrimSpace(taskDescription) == "" {
+		return fmt.Errorf("usage: gentle-ai task [flags] \"task description\"\n\nFlags:\n  --verbose         Show each step\n  --workdir DIR     Working directory\n  --engine ENGINE   Force engine (claude-code, opencode, gemini, codex)\n  --max-iter N      Max iterations (default: 30)\n  --save-to-engram  Save to Engram")
+	}
+
+	config.Task = taskDescription
+
+	// Validate and resolve working directory
+	if config.WorkDir == "" {
+		config.WorkDir = "."
+	}
+	absWorkDir, err := filepath.Abs(config.WorkDir)
+	if err != nil {
+		return fmt.Errorf("resolve workdir: %w", err)
+	}
+	config.WorkDir = absWorkDir
+
+	// Select engine
+	var engine agentbuilder.GenerationEngine
+	if config.Engine != "" {
+		// User specified engine
+		engine = agentbuilder.NewEngine(config.Engine)
+		if engine == nil {
+			return fmt.Errorf("unknown engine: %s (available: claude-code, opencode, gemini, codex)", config.Engine)
+		}
+		if !engine.Available() {
+			return fmt.Errorf("engine %s is not available on PATH", config.Engine)
+		}
+	} else {
+		// Auto-select first available
+		for _, agent := range []model.AgentID{
+			model.AgentClaudeCode,
+			model.AgentOpenCode,
+			model.AgentGeminiCLI,
+			model.AgentCodex,
+		} {
+			engine = agentbuilder.NewEngine(agent)
+			if engine != nil && engine.Available() {
+				config.Engine = agent
+				break
+			}
+		}
+		if engine == nil {
+			return fmt.Errorf("no AI engine found on PATH (tried: claude, opencode, gemini, codex)")
+		}
+	}
+
+	if config.Verbose {
+		fmt.Fprintf(stdout, "Task: %s\n", config.Task)
+		fmt.Fprintf(stdout, "WorkDir: %s\n", config.WorkDir)
+		fmt.Fprintf(stdout, "Engine: %s\n", config.Engine)
+		fmt.Fprintf(stdout, "MaxIter: %d\n\n", config.MaxIter)
+	}
+
+	// Run the loop
+	loop := taskrunner.NewLoop(config, engine)
+	report, err := loop.Run(ctx)
+	if err != nil {
+		return fmt.Errorf("task execution failed: %w", err)
+	}
+
+	// Print report
+	if config.Verbose {
+		taskrunner.PrintVerboseReport(stdout, report)
+	} else {
+		taskrunner.PrintReport(stdout, report)
+	}
+
+	// Save to Engram if requested
+	if config.SaveToEngram {
+		if err := taskrunner.SaveReportToEngram(report); err != nil {
+			fmt.Fprintf(stdout, "\nWarning: failed to save to Engram: %v\n", err)
+		}
+	}
+
+	// Return error if task failed
+	if report.Status != "success" {
+		return fmt.Errorf("task failed: %s", report.FinalOutput)
+	}
+
+	return nil
 }

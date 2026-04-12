@@ -52,3 +52,19 @@ When you detect any of these contexts, IMMEDIATELY read the corresponding skill 
 
 Read skills BEFORE writing code. Apply ALL patterns. Multiple skills can apply simultaneously.
 <!-- /gentle-ai:persona -->
+
+<!-- gentle-ai:taskrunner-integration -->
+## Autonomous Execution
+
+Detect task complexity and route automatically:
+
+**Simple tasks** → `!gentle-ai task "description"`
+- fix typo, add test, update doc, rename, delete file
+- Single action, no planning needed
+
+**Complex tasks** → `!gentle-ai sdd-autonomous "description"`
+- redesign, refactor architecture, new feature, implement system
+- Multi-phase, needs structure
+
+Explain your choice to the user in Gentleman style.
+<!-- /gentle-ai:taskrunner-integration -->

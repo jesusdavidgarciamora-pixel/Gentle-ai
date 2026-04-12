@@ -13,12 +13,14 @@ USAGE
   gentle-ai <command> [flags]
 
 COMMANDS
-  install      Configure AI coding agents on this machine
-  sync         Sync agent configs and skills to current version
-  update       Check for available updates
-  upgrade      Apply updates to managed tools
-  restore      Restore a config backup
-  version      Print version
+  install           Configure AI coding agents on this machine
+  sync              Sync agent configs and skills to current version
+  update            Check for available updates
+  upgrade           Apply updates to managed tools
+  restore           Restore a config backup
+  task              Run a task autonomously (one-shot execution)
+  sdd-autonomous    Run SDD workflow with autonomous mini-loops per phase
+  version           Print version
 
 FLAGS
   --help, -h    Show this help

@@ -115,7 +115,7 @@ If `mode` is `hybrid` but `rag.mcp_tool` is missing or empty, fall back to `grep
 ```
 1. Semantic query → call configured mcp_tool with a natural-language description
    of what you're looking for
-   ├── Results sufficient (≥2 relevant snippets)? → use them, done
+   ├── Results sufficient (clear, high-confidence matches to the target symbols/paths)? → use them, done
    └── Results insufficient or empty?
        ↓
 2. Exact search → Grep for symbols, patterns, or file paths

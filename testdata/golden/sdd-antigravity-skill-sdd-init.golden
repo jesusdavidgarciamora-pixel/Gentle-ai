@@ -134,8 +134,8 @@ Detect whether a RAG-capable MCP tool is available for semantic code search. The
 
 3. If nothing found, auto-detect MCP tools:
    ├── Scan available MCP tools for RAG-capable entries
-   │   (look for names/descriptions suggesting semantic/vector code search,
-   │    e.g., "rag_query", "code_search", "semantic_search", "project_rag")
+   │   (look for names/descriptions that explicitly mention semantic/vector/embedding
+   │    search; avoid generic "code_search" unless its description indicates embeddings)
    ├── RAG tool found:
    │   ├── search_strategy.mode: hybrid
    │   ├── search_strategy.rag.mcp_tool: {tool_name}

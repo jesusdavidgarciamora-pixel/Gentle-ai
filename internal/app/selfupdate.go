@@ -106,6 +106,9 @@ func selfUpdate(ctx context.Context, version string, profile system.PlatformProf
 	// Re-exec on Unix; print message on Windows.
 	if goOS() == "windows" {
 		_, _ = fmt.Fprintf(stdout, "Updated to v%s — please restart.\n", target.LatestVersion)
+		if report.ExitRequested {
+			os.Exit(0)
+		}
 		return nil
 	}
 

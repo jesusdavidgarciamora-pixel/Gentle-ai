@@ -502,6 +502,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Err == nil {
 			report := msg.Report
 			m.UpgradeReport = &report
+			if report.ExitRequested {
+				return m, tea.Quit
+			}
 		}
 		m.UpdateResults = nil
 		m.UpdateCheckDone = false
@@ -541,6 +544,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Err == nil {
 			report := msg.Report
 			m.UpgradeReport = &report
+			if report.ExitRequested {
+				return m, tea.Quit
+			}
 		}
 		m.UpdateResults = nil
 		m.UpdateCheckDone = false

@@ -214,7 +214,12 @@ func runUpgrade(ctx context.Context, args []string, detection system.DetectionRe
 		}
 	}
 
-	return errors.Join(errs...)
+	err = errors.Join(errs...)
+	if err == nil && report.ExitRequested {
+		os.Exit(0)
+	}
+
+	return err
 }
 
 func updateCheckError(results []update.UpdateResult) error {

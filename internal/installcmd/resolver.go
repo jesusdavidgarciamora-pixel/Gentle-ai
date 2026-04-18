@@ -142,6 +142,15 @@ func (profileResolver) ResolveComponentInstall(profile system.PlatformProfile, c
 	}
 }
 
+// withSudo prepends "sudo" to a command unless the profile indicates a
+// rootless environment (e.g. Termux on Android, where sudo does not exist).
+func withSudo(profile system.PlatformProfile, cmd []string) []string {
+	if profile.LinuxDistro == system.LinuxDistroTermux {
+		return cmd
+	}
+	return append([]string{"sudo"}, cmd...)
+}
+
 func (profileResolver) ResolveDependencyInstall(profile system.PlatformProfile, dependency string) (CommandSequence, error) {
 	if dependency == "" {
 		return nil, fmt.Errorf("dependency name is required")
@@ -151,11 +160,11 @@ func (profileResolver) ResolveDependencyInstall(profile system.PlatformProfile, 
 	case "brew":
 		return CommandSequence{{"brew", "install", dependency}}, nil
 	case "apt":
-		return CommandSequence{{"sudo", "apt-get", "install", "-y", dependency}}, nil
+		return CommandSequence{withSudo(profile, []string{"apt-get", "install", "-y", dependency})}, nil
 	case "pacman":
-		return CommandSequence{{"sudo", "pacman", "-S", "--noconfirm", dependency}}, nil
+		return CommandSequence{withSudo(profile, []string{"pacman", "-S", "--noconfirm", dependency})}, nil
 	case "dnf":
-		return CommandSequence{{"sudo", "dnf", "install", "-y", dependency}}, nil
+		return CommandSequence{withSudo(profile, []string{"dnf", "install", "-y", dependency})}, nil
 	case "winget":
 		return CommandSequence{{"winget", "install", "--id", dependency, "-e", "--accept-source-agreements", "--accept-package-agreements"}}, nil
 	default:
@@ -198,6 +207,8 @@ func resolveOpenCodeInstall(profile system.PlatformProfile) (CommandSequence, er
 // - darwin: brew tap + brew install (via Gentleman-Programming/homebrew-tap)
 // - linux: git clone + install.sh (GGA is a pure Bash project, NOT a Go module)
 func resolveGGAInstall(profile system.PlatformProfile) (CommandSequence, error) {
+	resolver := system.NewResolverForDistro(profile.LinuxDistro)
+
 	switch profile.PackageManager {
 	case "brew":
 		return CommandSequence{
@@ -205,7 +216,7 @@ func resolveGGAInstall(profile system.PlatformProfile) (CommandSequence, error) 
 			{"brew", "reinstall", "gga"},
 		}, nil
 	case "apt", "pacman", "dnf":
-		const tmpDir = "/tmp/gentleman-guardian-angel"
+		tmpDir := resolver.Resolve("/tmp/gentleman-guardian-angel")
 		return CommandSequence{
 			{"rm", "-rf", tmpDir},
 			{"git", "clone", "https://github.com/Gentleman-Programming/gentleman-guardian-angel.git", tmpDir},

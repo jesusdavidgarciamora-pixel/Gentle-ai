@@ -201,6 +201,17 @@ When launching `sdd-apply` or `sdd-verify` sub-agents, the orchestrator MUST:
 
 The orchestrator resolves TDD status ONCE per session (at first apply/verify launch) and caches it.
 
+#### Search Strategy Forwarding (MANDATORY)
+
+When launching `sdd-explore`, `sdd-apply`, or `sdd-verify` sub-agents, the orchestrator MUST:
+
+1. Search for project context: `mem_search(query: "sdd-init/{project}", project: "{project}")` → `mem_get_observation(id)`
+2. If the result contains a `search_strategy` block:
+   - Add to the sub-agent prompt: "SEARCH STRATEGY CONFIG DETECTED. Mode: {search_strategy.mode}. RAG MCP tool: {search_strategy.rag.mcp_tool} (optional reindex: {search_strategy.rag.reindex_tool}). Follow Section E in sdd-phase-common.md for code search."
+3. If `search_strategy` is missing, do NOT add any extra instruction (sub-agents default to grep per Section E).
+
+Resolve this ONCE per session (at first explore/apply/verify launch) and cache it.
+
 #### Apply-Progress Continuity (MANDATORY)
 
 When launching `sdd-apply` for a continuation batch (not the first batch):

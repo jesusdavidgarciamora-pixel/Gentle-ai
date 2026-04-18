@@ -117,6 +117,39 @@ Determine whether Strict TDD Mode should be enabled. The resolution follows a pr
 
 **Do NOT ask the user interactively.** The preference is resolved from existing config. If the user wants to change it, they run `gentle-ai sync` with the TUI or set `strict_tdd` in `openspec/config.yaml`.
 
+### Step 3.5: Detect Search Strategy
+
+Detect whether a RAG-capable MCP tool is available for semantic code search. The resolution follows the SAME priority chain as Strict TDD Mode — first match wins:
+
+```
+1. Read from system prompt / agent config (highest priority):
+   ├── Search for "search_strategy" marker in the agent's system prompt file
+   │   (e.g., CLAUDE.md, GEMINI.md, .cursorrules, etc.)
+   ├── If found → use the configured mode value
+   └── This is the preference set by the user in the gentle-ai TUI
+
+2. If no marker found, check openspec config:
+   ├── Read openspec/config.yaml → search_strategy block
+   └── If found → use that value
+
+3. If nothing found, auto-detect MCP tools:
+   ├── Scan available MCP tools for RAG-capable entries
+   │   (look for names/descriptions that explicitly mention semantic/vector/embedding
+   │    search; avoid generic "code_search" unless its description indicates embeddings)
+   ├── RAG tool found:
+   │   ├── search_strategy.mode: hybrid
+   │   ├── search_strategy.rag.mcp_tool: {tool_name}
+   │   └── If a companion reindex tool is detected (same prefix or explicit "reindex" name):
+   │       └── search_strategy.rag.reindex_tool: {reindex_tool_name}
+   └── No RAG tool found:
+       ├── search_strategy.mode: grep
+       └── grep is the silent default — do NOT prompt the user
+```
+
+**Do NOT ask the user interactively.** The preference is resolved from existing config or auto-detection. If the user wants to change it, they set `search_strategy` in `openspec/config.yaml` or run `gentle-ai sync` with the TUI.
+
+The resolved `search_strategy` config is persisted alongside `strict_tdd` in Step 8 (engram), Step 5 (openspec config), or both (hybrid).
+
 ### Step 4: Initialize Persistence Backend
 
 If mode resolves to `openspec`, create this directory structure:
@@ -144,6 +177,13 @@ context: |
   Style: {detected linting/formatting}
 
 strict_tdd: {true/false}
+
+search_strategy:
+  mode: {grep/hybrid}            # default: grep (from Step 3.5)
+  # Uncomment and fill when mode is hybrid (detected in Step 3.5):
+  # rag:
+  #   mcp_tool: "{tool_name}"     # MCP tool name for semantic search
+  #   reindex_tool: "{tool_name}" # optional — fire-and-forget after sdd-apply batch
 
 rules:
   proposal:
@@ -241,7 +281,7 @@ mem_save(
   topic_key: "sdd-init/{project-name}",
   type: "architecture",
   project: "{project-name}",
-  content: "{your detected project context from Steps 1-7}"
+  content: "{your detected project context from Steps 1-7, including search_strategy from Step 3.5}"
 )
 ```
 
@@ -265,6 +305,7 @@ Return:
 **Stack**: {detected stack}
 **Persistence**: engram
 **Strict TDD Mode**: {enabled ✅ / disabled ❌ / unavailable (no test runner)}
+**Search Strategy**: {grep (default) / hybrid — {rag.mcp_tool}}
 
 ### Testing Capabilities
 | Capability | Status |
@@ -306,6 +347,7 @@ Ready for /sdd-explore <topic> or /sdd-new <change-name>.
 **Stack**: {detected stack}
 **Persistence**: openspec
 **Strict TDD Mode**: {enabled ✅ / disabled ❌ / unavailable (no test runner)}
+**Search Strategy**: {grep (default) / hybrid — {rag.mcp_tool}}
 
 ### Testing Capabilities
 {same table as above}
@@ -327,6 +369,7 @@ Ready for /sdd-explore <topic> or /sdd-new <change-name>.
 **Stack**: {detected stack}
 **Persistence**: none (ephemeral)
 **Strict TDD Mode**: {enabled ✅ / disabled ❌ / unavailable (no test runner)}
+**Search Strategy**: {grep (default) / hybrid — {rag.mcp_tool}}
 
 ### Testing Capabilities
 {same table as above}

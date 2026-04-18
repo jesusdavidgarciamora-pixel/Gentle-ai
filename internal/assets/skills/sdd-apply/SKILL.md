@@ -39,7 +39,8 @@ Follow **Section A** from `skills/_shared/sdd-phase-common.md`.
 Before writing ANY code:
 1. Read the specs — understand WHAT the code must do
 2. Read the design — understand HOW to structure the code
-3. Read existing code in affected files — understand current patterns
+3a. Read `search_strategy` from project context (per Section E's "Reading the config" procedure) — cache the result; it is reused by the reindex hook in Step 6b
+3b. Read existing code in affected files following **Section E** from `skills/_shared/sdd-phase-common.md` for code search (uses hybrid cascade if configured, grep otherwise)
 4. Check the project's coding conventions from `config.yaml`
 
 #### Step 2b: Read Previous Apply-Progress (if exists)
@@ -130,6 +131,10 @@ When saving apply-progress:
 1. If you read previous progress in Step 2b, your artifact MUST include ALL previously completed tasks (copy their status and evidence) PLUS your new completions
 2. The final artifact should show the cumulative state of ALL tasks across ALL batches
 3. Format: keep the same structure but ensure no completed task is lost from prior batches
+
+#### Step 6b: Reindex Hook (Section E)
+
+After persisting apply-progress, follow the reindex hook protocol from Section E of `sdd-phase-common.md`. Use the `search_strategy` config cached in Step 3a.
 
 ### Step 7: Return Summary
 

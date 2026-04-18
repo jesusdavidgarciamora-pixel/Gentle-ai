@@ -85,6 +85,20 @@ Why this split:
 - Sub-agents read for SDD: SDD artifacts are large; inlining them in the orchestrator prompt would consume the entire context window
 - Sub-agents always write: they have the complete detail on what happened; nuance is lost by the time results flow back to the orchestrator
 
+## Search Strategy Context
+
+The orchestrator MAY pass `search_strategy` config to sub-agents that read code. This is optional — phases MUST default to `grep` behavior when absent.
+
+```yaml
+search_strategy:
+  mode: grep | hybrid          # default: grep (current behavior)
+  rag:                          # present only when mode: hybrid
+    mcp_tool: "tool_name"       # MCP tool name for semantic search (REQUIRED for hybrid)
+    reindex_tool: "tool_name"   # optional — fire-and-forget after sdd-apply batch
+```
+
+Sub-agents that receive this config follow **Section E** from `sdd-phase-common.md` for code search. Sub-agents that do NOT read code (sdd-propose, sdd-spec, sdd-design, sdd-tasks, sdd-archive) ignore this config entirely.
+
 ## Orchestrator Prompt Instructions for Sub-Agents
 
 Non-SDD:
